@@ -1,0 +1,11 @@
+ ###### Requirements without Version Specifiers ######
+plotly
+black
+pandas
+rise
+statsmodels
+scikit-learn
+pyaml-env
+faker
+
+###### Requirements with Version Specifiers ######
