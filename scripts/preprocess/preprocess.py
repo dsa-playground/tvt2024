@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from scripts.preprocess.preprocess_collect import collect_str_input
 
 def load_timeseries_data():
-    df = pd.read_csv(filepath_or_buffer='data/timeseries.csv', sep=';')
+    df = pd.read_csv(filepath_or_buffer='data/Timeseries.csv', sep=';')
     df.set_index('Datum', inplace=True)
     df.index = pd.to_datetime(df.index)
     df = df.asfreq('D')
