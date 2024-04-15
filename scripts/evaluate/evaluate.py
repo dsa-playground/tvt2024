@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 import numpy as np
 import datetime as datetime
-from sklearn.metrics import mean_absolute_percentage_error, mean_absolute_error, mean_squared_error
+from sklearn.metrics import r2_score, mean_absolute_percentage_error, mean_absolute_error, mean_squared_error
 
 
 def plot_timeseries(df, col, date_untill='2024-05-15'):
@@ -175,6 +175,8 @@ def plot_distribution(df, base_col, start, end):
 #     plot_errors(df=df, base_col=onderwerp, start=start, end=end)
 #     plot_distribution(df=df, base_col=onderwerp, start=start, end=end)
 
+def calc_r2_score(y_true, y_pred):
+    return r2_score(y_true, y_pred)
 
 def calc_sum_of_errors(y_true, y_pred):
     return np.sum(y_true - y_pred)

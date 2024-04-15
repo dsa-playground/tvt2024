@@ -12,22 +12,22 @@ def load_timeseries_data():
     return df
 
 
-def kies_onderwerp():
-    vraag = """
-        Welke reeks wil je voorspellen (a, b, c):
-                a. ZZP (verwachting clienten)
-                b. Ziekteverzuimpercentage
-                c. Inkoop materialen
-                d. Flexpool (aantal personen)
-        """
-    mogelijke_antwoorden = ['a', 'b', 'c', 'd']
+# def kies_onderwerp():
+#     vraag = """
+#         Welke reeks wil je voorspellen (a, b, c):
+#                 a. ZZP (verwachting clienten)
+#                 b. Ziekteverzuimpercentage
+#                 c. Inkoop materialen
+#                 d. Flexpool (aantal personen)
+#         """
+#     mogelijke_antwoorden = ['a', 'b', 'c', 'd']
 
-    str = collect_str_input(
-        question=vraag, 
-        possible_entries=mogelijke_antwoorden)
-    dict_antwoorden = {'a': 'ZZP', 'b': 'Ziekteverzuim', 'c': 'Inkoop', 'd': 'Flexpool'}
-    print(f'Gekozen antwoord: {dict_antwoorden[str]}')
-    return dict_antwoorden[str]
+#     str = collect_str_input(
+#         question=vraag, 
+#         possible_entries=mogelijke_antwoorden)
+#     dict_antwoorden = {'a': 'ZZP', 'b': 'Ziekteverzuim', 'c': 'Inkoop', 'd': 'Flexpool'}
+#     print(f'Gekozen antwoord: {dict_antwoorden[str]}')
+#     return dict_antwoorden[str]
 
 
 def create_subset_df(df, start, end):
@@ -161,6 +161,16 @@ def make_X_y(df, onderwerp, vanaf_datum_train_periode, tot_datum_train_periode, 
 
     return df_X_train, df_y_train, df_X_test, df_y_test
 
+def combine_dfs_of_models(list_of_dfs):
+    df_combined = pd.DataFrame()
+    for df in list_of_dfs:
+        if df.empty:
+            continue
+        else:
+            common_cols = df_combined.columns.intersection(df.columns)
+            df = df.drop(columns=common_cols)
+            df_combined = pd.concat([df_combined, df], axis=1)
+    return df_combined
 
 # def plot_timeseries(df, col, date_untill='2024-05-15'):
 #     df_plot = df.loc[df.index < date_untill].copy()

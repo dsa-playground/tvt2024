@@ -1,8 +1,8 @@
 import datetime as datetime
 import pandas as pd
 from scripts.evaluate.evaluate import plot_prediction_with_shapes
-from scripts.preprocess.preprocess import load_timeseries_data, collect_str_input, make_X_y
-from scripts.evaluate.evaluate import plot_timeseries, plot_errors, plot_distribution, calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE
+from scripts.preprocess.preprocess import load_timeseries_data, collect_str_input, make_X_y, combine_dfs_of_models
+from scripts.evaluate.evaluate import plot_timeseries, plot_errors, plot_distribution, calc_r2_score, calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE
 from scripts.model.model import calc_average, predict_with_average, calc_moving_average, LinearRegressionTrain, LinearRegressionPredict
 
 def bekijk_data():
@@ -242,26 +242,62 @@ def pas_modellen_toe(df,
 
     return df_total
 
-def onderzoek_afwijkingen(df, onderwerp, start, end):
-    plot_errors(df=df, base_col=onderwerp, start=start, end=end)
-    plot_distribution(df=df, base_col=onderwerp, start=start, end=end)
+def onderzoek_afwijkingen(list_of_dfs, onderwerp, start=None, end=None, show='errors'):
+    df = combine_dfs_of_models(list_of_dfs)
+    if start is None:
+        start = df.index.min()
+    if end is None:
+        end = df.index.max()
+    if show == 'errors':
+        plot_errors(df=df, base_col=onderwerp, start=start, end=end)
+    elif show == 'distribution':
+        plot_distribution(df=df, base_col=onderwerp, start=start, end=end)
+    elif show == 'both':
+        plot_errors(df=df, base_col=onderwerp, start=start, end=end)
+        plot_distribution(df=df, base_col=onderwerp, start=start, end=end)
+    else:
+        raise ValueError("Kies een van de volgende opties: 'errors', 'distribution' of 'both'.")
 
 
-def bereken_metrieken(df, onderwerp, start, end):
+def bereken_metrieken(list_of_dfs, onderwerp, start, end, list_metrics=[calc_r2_score, calc_MAE]):
+    """_summary_
+
+    Parameters
+    ----------
+    list_of_dfs : _type_
+        _description_
+    onderwerp : _type_
+        _description_
+    start : _type_
+        _description_
+    end : _type_
+        _description_
+    list_metrics : _type_
+        _description_[calc_r2_score, calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE]
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    df = combine_dfs_of_models(list_of_dfs)
     _df = df.loc[start:end].copy()
     print(f"De periode die wordt geanalyseerd is van {start} tot {end.date()}.")
     df_metrics = pd.DataFrame()
     metric_cols = [col for col in _df.columns if onderwerp not in col]
+
     for col in metric_cols:
-        for metric in [calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE]:
+        for metric in list_metrics:
             df_metrics.loc[col, metric.__name__] = metric(_df[onderwerp], _df[col])
-    df_metrics.rename(columns={'calc_sum_of_errors': 'Totale afwijking', 
-                               'calc_average_error': 'Gemiddelde afwijking', 
-                               'calc_max_error': 'Maximale afwijking',
-                               'calc_MAE': 'Mean Absolute Error', 
-                               'calc_MAPE': 'Mean Absolute Percentage Error', 
-                               'calc_RMSE': 'Root Mean Squared Error'}, 
-                               inplace=True)
+    df_metrics.rename(columns={
+        'calc_r2_score': 'R2-score',
+        'calc_sum_of_errors': 'Totale afwijking', 
+        'calc_average_error': 'Gemiddelde afwijking', 
+        'calc_max_error': 'Maximale afwijking',
+        'calc_MAE': 'Mean Absolute Error', 
+        'calc_MAPE': 'Mean Absolute Percentage Error', 
+        'calc_RMSE': 'Root Mean Squared Error'}, 
+        inplace=True)
     return df_metrics
 
 def pas_parameters_toe_en_evalueer(df, 
