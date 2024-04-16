@@ -13,6 +13,20 @@ def bekijk_data():
 
     return df
 
+def laad_data():
+    df = load_timeseries_data()
+    df = df.drop(columns=['Inkoop'])
+    return df
+
+def bekijk_ziekteverzuim(df):
+    plot_timeseries(df, 'Ziekteverzuim')
+
+def bekijk_zzp(df):
+    plot_timeseries(df, 'ZZP')
+
+def bekijk_flexpool(df):
+    plot_timeseries(df, 'Flexpool')
+
 def kies_onderwerp():
     vraag = """
         Welke reeks wil je voorspellen (a, b, c):
@@ -29,12 +43,32 @@ def kies_onderwerp():
     print(f'Gekozen antwoord: {dict_antwoorden[str]}')
     return dict_antwoorden[str]
 
+def calibrate_dates(start_train, end_train, start_test, end_test):
+    date_today = datetime.datetime.now()
+    year_in_the_past = date_today - datetime.timedelta(days=365)
+    if start_train == None:
+        start_train = '2019-01-01'
+    if end_train == None:
+        end_train = year_in_the_past.strftime('%Y-%m-%d')
+    if start_test == None:
+        start_test = year_in_the_past.strftime('%Y-%m-%d')
+    if end_test == None:
+        end_test = date_today.strftime('%Y-%m-%d')
+    return start_train, end_train, start_test, end_test
+
 def pas_gemiddelde_toe(df, 
                      onderwerp, 
-                     vanaf_datum_train_periode = '2019-01-01',
-                     tot_datum_train_periode = '2023-05-15',
-                     vanaf_datum_test_periode = '2023-05-15',
-                     tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d')):
+                     vanaf_datum_train_periode = None,
+                     tot_datum_train_periode = None,
+                     vanaf_datum_test_periode = None,
+                     tot_datum_test_periode = None):
+    
+    vanaf_datum_train_periode, tot_datum_train_periode, \
+        vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
+                                                                           tot_datum_train_periode, 
+                                                                           vanaf_datum_test_periode, 
+                                                                           tot_datum_test_periode)
+
     df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(df, 
                                                             onderwerp, 
                                                             vanaf_datum_train_periode, 
@@ -67,17 +101,28 @@ def pas_gemiddelde_toe(df,
 
     return df_total
 
-def pas_voortschrijdend_gemiddelde_toe(df, 
+def pas_voortschrijdend_gemiddelde_toe(data, 
                      onderwerp, 
-                     vanaf_datum_train_periode = '2019-01-01',
-                     tot_datum_train_periode = '2023-05-15',
-                     vanaf_datum_test_periode = '2023-05-15',
-                     tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d'),
-                     window_size = 7,
-                     shift_period = 0,
+                     vanaf_datum_train_periode = None,
+                     tot_datum_train_periode = None,
+                     vanaf_datum_test_periode = None,
+                     tot_datum_test_periode = None,
+                     vensterlengte = 7,
+                     verschuiving = 0,
                      predict=False):
     
-    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(df, 
+    vanaf_datum_train_periode, tot_datum_train_periode, \
+        vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
+                                                                           tot_datum_train_periode, 
+                                                                           vanaf_datum_test_periode, 
+                                                                           tot_datum_test_periode)
+    
+    if vensterlengte < 1:
+        raise ValueError("De vensterlengte moet groter of gelijk aan 1 zijn.")
+    if verschuiving < 0:
+        raise ValueError("De verschuiving moet groter of gelijk aan 0 zijn.")
+    
+    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(data, 
                                                             onderwerp, 
                                                             vanaf_datum_train_periode, 
                                                             tot_datum_train_periode, 
@@ -93,8 +138,8 @@ def pas_voortschrijdend_gemiddelde_toe(df,
         df_y_test_nan.name = df_y_test.name
         df_y_base = pd.concat([df_y_train, df_y_test_nan])
     y_preds_train_mov_avg = calc_moving_average(df_y_base, 
-                                                window_size=window_size, 
-                                                shift_period=shift_period, 
+                                                window_size=vensterlengte, 
+                                                shift_period=verschuiving, 
                                                 predict_to_date=tot_datum_test_periode,
                                                 predict=predict)
 
@@ -114,17 +159,31 @@ def pas_voortschrijdend_gemiddelde_toe(df,
 
     return df_total
 
-def pas_lineaire_regressie_toe(df, 
+def pas_lineaire_regressie_toe(data, 
                      onderwerp, 
-                     vanaf_datum_train_periode = '2019-01-01',
-                     tot_datum_train_periode = '2023-05-15',
-                     vanaf_datum_test_periode = '2023-05-15',
-                     tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d'),
-                     yearly_seasonality=False,
-                     weekly_seasonality=False,
-                     transformation=None, n_bins=4, strategy='uniform', n_knots=10, degree=3):
+                     vanaf_datum_train_periode = None,
+                     tot_datum_train_periode = None,
+                     vanaf_datum_test_periode = None,
+                     tot_datum_test_periode = None,
+                     jaarlijks_seizoenspatroon=False,
+                     weeklijks_seizoenspatroon=False,
+                     transformatie='geen', n_bins=4, strategy='uniform', n_knots=10, graad=3):
     
-    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(df, 
+    transformatie = str(transformatie).lower()
+    if n_knots < 2:
+        raise ValueError("Het getal voor k_nots moet 2 of groter zijn.")
+    if graad < 1:
+        raise ValueError("Het getal voor graad moet 1 of groter zijn.")
+    if transformatie not in ['geen', 'spline']:
+        raise ValueError("De transformatie moet 'geen' of 'spline' zijn.")
+
+    vanaf_datum_train_periode, tot_datum_train_periode, \
+        vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
+                                                                           tot_datum_train_periode, 
+                                                                           vanaf_datum_test_periode, 
+                                                                           tot_datum_test_periode)
+
+    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(data, 
                                                             onderwerp, 
                                                             vanaf_datum_train_periode, 
                                                             tot_datum_train_periode, 
@@ -135,19 +194,19 @@ def pas_lineaire_regressie_toe(df,
     # Get Linear Regression model
     model = LinearRegressionTrain(df_X_train, 
                                   df_y_train, 
-                                  yearly_seasonality=yearly_seasonality, 
-                                  weekly_seasonality=weekly_seasonality,
-                                  transformation=transformation, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=degree)
+                                  yearly_seasonality=jaarlijks_seizoenspatroon, 
+                                  weekly_seasonality=weeklijks_seizoenspatroon,
+                                  transformation=transformatie, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=graad)
     # Make predictions with the Linear Regression model for the train data
     y_preds_train_lin_reg = LinearRegressionPredict(df_X_train, 
                                                     model, 
-                                                    yearly_seasonality=yearly_seasonality, 
-                                                    weekly_seasonality=weekly_seasonality)
+                                                    yearly_seasonality=jaarlijks_seizoenspatroon, 
+                                                    weekly_seasonality=weeklijks_seizoenspatroon)
     # Make predictions with the Linear Regression model for the test data
     y_preds_test_lin_reg = LinearRegressionPredict(df_X_test, 
                                                    model, 
-                                                   yearly_seasonality=yearly_seasonality, 
-                                                   weekly_seasonality=weekly_seasonality)
+                                                   yearly_seasonality=jaarlijks_seizoenspatroon, 
+                                                   weekly_seasonality=weeklijks_seizoenspatroon)
     y_lin_reg = pd.concat([y_preds_train_lin_reg, y_preds_test_lin_reg])
 
     df_real = pd.concat([df_y_train, df_y_test], axis=0)
@@ -168,12 +227,12 @@ def pas_lineaire_regressie_toe(df,
     return df_total
 
 
-def pas_modellen_toe(df, 
+def pas_modellen_toe(data, 
                      onderwerp, 
-                     vanaf_datum_train_periode = '2019-01-01',
-                     tot_datum_train_periode = '2023-05-15',
-                     vanaf_datum_test_periode = '2023-05-15',
-                     tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d'),
+                     vanaf_datum_train_periode = None,
+                     tot_datum_train_periode = None,
+                     vanaf_datum_test_periode = None,
+                     tot_datum_test_periode = None,
                      window_size = 7,
                      shift_period = 365,
                      yearly_seasonality=False,
@@ -181,7 +240,13 @@ def pas_modellen_toe(df,
                      transformation=None, n_bins=4, strategy='uniform', n_knots=10, degree=3,
                      predict=False):
     
-    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(df, 
+    vanaf_datum_train_periode, tot_datum_train_periode, \
+        vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
+                                                                           tot_datum_train_periode, 
+                                                                           vanaf_datum_test_periode, 
+                                                                           tot_datum_test_periode)
+
+    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(data, 
                                                             onderwerp, 
                                                             vanaf_datum_train_periode, 
                                                             tot_datum_train_periode, 
@@ -247,6 +312,7 @@ def pas_modellen_toe(df,
 
 def onderzoek_afwijkingen(list_of_dfs, onderwerp, start=None, end=None, show='errors'):
     df = combine_dfs_of_models(list_of_dfs)
+    _, _, start, end = calibrate_dates(None,None, start, end)
     if start is None:
         start = df.index.min()
     if end is None:
@@ -284,12 +350,14 @@ def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics
         _description_
     """
     df = combine_dfs_of_models(list_of_dfs)
+    df = combine_dfs_of_models(list_of_dfs)
+    _, _, start, end = calibrate_dates(None,None, start, end)
     if start is None:
         start = df.index.min()
     if end is None:
         end = df.index.max()
     _df = df.loc[start:end].copy()
-    print(f"De periode die wordt geanalyseerd is van {start} tot {end.date()}.")
+    print(f"De periode die wordt geanalyseerd is van {start} tot {end}.")
     df_metrics = pd.DataFrame()
     metric_cols = [col for col in _df.columns if onderwerp not in col]
 

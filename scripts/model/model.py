@@ -162,11 +162,11 @@ def calc_moving_average(data, window_size, shift_period, predict_to_date, base_c
 #     X_train_num = X_train_num[[col for col in X_train_num.columns if 'transformation' in col]]
 #     return X_train_num
 
-def LinearRegressionTrain(X_train, y_train, yearly_seasonality=False, weekly_seasonality=False, transformation=None, n_bins=4, strategy='uniform', n_knots=10, degree=3):
+def LinearRegressionTrain(X_train, y_train, yearly_seasonality=False, weekly_seasonality=False, transformation='geen', n_bins=4, strategy='uniform', n_knots=10, degree=3):
     # Transform the training data
     X_train_num = LinearRegressionTransformation(X_train, yearly_seasonality, weekly_seasonality)
     
-    if transformation == None:
+    if transformation == 'geen':
         model = LinearRegression()
     elif transformation == 'binnes':
         # X_train_num['Datum'] = X_train_num['date_transformation'].map(datetime.datetime.fromordinal)
@@ -194,7 +194,7 @@ def LinearRegressionTrain(X_train, y_train, yearly_seasonality=False, weekly_sea
         )
         model = polynomial_regression
     else:
-        raise ValueError(f"Transformation {transformation} is not supported. Please choose None, 'binnes' or 'spline'.")
+        raise ValueError(f"Transformation {transformation} is not supported. Please choose 'lineair', 'binnes', 'spline' or 'polynomial'.")
     
     # print(X_train_num.head())
     # Fit the model to the training data
