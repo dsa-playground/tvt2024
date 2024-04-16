@@ -7,27 +7,25 @@ from scripts.model.model import calc_average, predict_with_average, calc_moving_
 
 def bekijk_data():
     df = load_timeseries_data()
-
+    df = df.drop(columns=['Inkoop'])
     for col in df.columns:
         plot_timeseries(df, col)
 
     return df
-
 
 def kies_onderwerp():
     vraag = """
         Welke reeks wil je voorspellen (a, b, c):
                 a. ZZP (verwachting clienten)
                 b. Ziekteverzuimpercentage
-                c. Inkoop materialen
-                d. Flexpool (aantal personen)
+                c. Flexpool (aantal personen)
         """
     mogelijke_antwoorden = ['a', 'b', 'c', 'd']
 
     str = collect_str_input(
         question=vraag, 
         possible_entries=mogelijke_antwoorden)
-    dict_antwoorden = {'a': 'ZZP', 'b': 'Ziekteverzuim', 'c': 'Inkoop', 'd': 'Flexpool'}
+    dict_antwoorden = {'a': 'ZZP', 'b': 'Ziekteverzuim', 'c': 'Flexpool'}
     print(f'Gekozen antwoord: {dict_antwoorden[str]}')
     return dict_antwoorden[str]
 
@@ -76,7 +74,7 @@ def pas_voortschrijdend_gemiddelde_toe(df,
                      vanaf_datum_test_periode = '2023-05-15',
                      tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d'),
                      window_size = 7,
-                     shift_period = 365,
+                     shift_period = 0,
                      predict=False):
     
     df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(df, 
@@ -88,8 +86,13 @@ def pas_voortschrijdend_gemiddelde_toe(df,
 
     # Apply moving average model
     # Calculate the moving average of the training data
-    df_y_train_test = pd.concat([df_y_train, df_y_test])
-    y_preds_train_mov_avg = calc_moving_average(df_y_train_test, 
+    if predict:
+        df_y_base = pd.concat([df_y_train, df_y_test])
+    else:
+        df_y_test_nan = pd.Series(index=df_y_test.index)
+        df_y_test_nan.name = df_y_test.name
+        df_y_base = pd.concat([df_y_train, df_y_test_nan])
+    y_preds_train_mov_avg = calc_moving_average(df_y_base, 
                                                 window_size=window_size, 
                                                 shift_period=shift_period, 
                                                 predict_to_date=tot_datum_test_periode,
@@ -259,7 +262,7 @@ def onderzoek_afwijkingen(list_of_dfs, onderwerp, start=None, end=None, show='er
         raise ValueError("Kies een van de volgende opties: 'errors', 'distribution' of 'both'.")
 
 
-def bereken_metrieken(list_of_dfs, onderwerp, start, end, list_metrics=[calc_r2_score, calc_MAE]):
+def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics=[calc_average_error, calc_max_error, calc_r2_score, calc_MAE]):
     """_summary_
 
     Parameters
@@ -281,6 +284,10 @@ def bereken_metrieken(list_of_dfs, onderwerp, start, end, list_metrics=[calc_r2_
         _description_
     """
     df = combine_dfs_of_models(list_of_dfs)
+    if start is None:
+        start = df.index.min()
+    if end is None:
+        end = df.index.max()
     _df = df.loc[start:end].copy()
     print(f"De periode die wordt geanalyseerd is van {start} tot {end.date()}.")
     df_metrics = pd.DataFrame()
