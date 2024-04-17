@@ -2,7 +2,7 @@ import datetime as datetime
 import pandas as pd
 from scripts.evaluate.evaluate import plot_prediction_with_shapes
 from scripts.preprocess.preprocess import load_timeseries_data, collect_str_input, make_X_y, combine_dfs_of_models
-from scripts.evaluate.evaluate import plot_timeseries, plot_errors, plot_distribution, calc_r2_score, calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE
+from scripts.evaluate.evaluate import plot_timeseries, plot_errors, plot_distribution, accuracy, calc_r2_score, calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE
 from scripts.model.model import calc_average, predict_with_average, calc_moving_average, LinearRegressionTrain, LinearRegressionPredict
 
 def bekijk_data():
@@ -31,7 +31,7 @@ def kies_onderwerp():
     vraag = """
         Welke reeks wil je voorspellen (a, b, c):
                 a. ZZP (verwachting clienten)
-                b. Ziekteverzuimpercentage
+                b. Ziekteverzuim(percentage)
                 c. Flexpool (aantal personen)
         """
     mogelijke_antwoorden = ['a', 'b', 'c', 'd']
@@ -61,7 +61,8 @@ def pas_gemiddelde_toe(df,
                      vanaf_datum_train_periode = None,
                      tot_datum_train_periode = None,
                      vanaf_datum_test_periode = None,
-                     tot_datum_test_periode = None):
+                     tot_datum_test_periode = None,
+                     zie_traintest_periodes=False):
     
     vanaf_datum_train_periode, tot_datum_train_periode, \
         vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
@@ -97,7 +98,7 @@ def pas_gemiddelde_toe(df,
                                 end_train=tot_datum_train_periode, 
                                 start_test=vanaf_datum_test_periode, 
                                 end_test=tot_datum_test_periode, 
-                                shapes=True)
+                                shapes=zie_traintest_periodes)
 
     return df_total
 
@@ -109,8 +110,13 @@ def pas_voortschrijdend_gemiddelde_toe(data,
                      tot_datum_test_periode = None,
                      vensterlengte = 7,
                      verschuiving = 0,
-                     predict=False):
-    
+                     predict=False,
+                     zie_traintest_periodes=False):
+    if (isinstance(vensterlengte, int) is False) | (vensterlengte < 1):
+        raise ValueError("De vensterlengte moet een geheel getal zijn én groter of gelijk aan 1.")
+    if (isinstance(verschuiving, int) is False) | (verschuiving < 0):
+        raise ValueError("De verschuiving moet een geheel getal zijn én groter of gelijk aan 0.")
+
     vanaf_datum_train_periode, tot_datum_train_periode, \
         vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
                                                                            tot_datum_train_periode, 
@@ -155,27 +161,32 @@ def pas_voortschrijdend_gemiddelde_toe(data,
                                 end_train=tot_datum_train_periode, 
                                 start_test=vanaf_datum_test_periode, 
                                 end_test=tot_datum_test_periode, 
-                                shapes=True)
+                                shapes=zie_traintest_periodes)
 
     return df_total
 
-def pas_lineaire_regressie_toe(data, 
+def pas_regressie_toe(data, 
                      onderwerp, 
                      vanaf_datum_train_periode = None,
                      tot_datum_train_periode = None,
                      vanaf_datum_test_periode = None,
                      tot_datum_test_periode = None,
                      jaarlijks_seizoenspatroon=False,
-                     weeklijks_seizoenspatroon=False,
-                     transformatie='geen', n_bins=4, strategy='uniform', n_knots=10, graad=3):
+                     wekelijks_seizoenspatroon=False,
+                     transformatie='spline', n_bins=4, strategy='uniform', n_knots=2, graad=1,
+                     zie_traintest_periodes=False):
     
     transformatie = str(transformatie).lower()
+    if isinstance(jaarlijks_seizoenspatroon, bool) is False:
+        raise ValueError("Het getal voor jaarlijks_seizoenspatroon moet een boolean (True/False) zijn.")
+    if isinstance(wekelijks_seizoenspatroon, bool) is False:
+        raise ValueError("Het getal voor wekelijks_seizoenspatroon moet een boolean (True/False) zijn.")
     if n_knots < 2:
         raise ValueError("Het getal voor k_nots moet 2 of groter zijn.")
-    if graad < 1:
-        raise ValueError("Het getal voor graad moet 1 of groter zijn.")
-    if transformatie not in ['geen', 'spline']:
-        raise ValueError("De transformatie moet 'geen' of 'spline' zijn.")
+    if (isinstance(graad, int) is False) | (graad < 1):
+        raise ValueError("Het getal voor graad moet een geheel getal zijn én groter of gelijk aan 1.")
+    if transformatie not in ['geen', 'binnes', 'spline', 'polynomial']:
+        raise ValueError("De transformatie moet 'geen', 'binnes', 'spline' of 'polynomial' zijn.")
 
     vanaf_datum_train_periode, tot_datum_train_periode, \
         vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
@@ -195,18 +206,18 @@ def pas_lineaire_regressie_toe(data,
     model = LinearRegressionTrain(df_X_train, 
                                   df_y_train, 
                                   yearly_seasonality=jaarlijks_seizoenspatroon, 
-                                  weekly_seasonality=weeklijks_seizoenspatroon,
+                                  weekly_seasonality=wekelijks_seizoenspatroon,
                                   transformation=transformatie, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=graad)
     # Make predictions with the Linear Regression model for the train data
     y_preds_train_lin_reg = LinearRegressionPredict(df_X_train, 
                                                     model, 
                                                     yearly_seasonality=jaarlijks_seizoenspatroon, 
-                                                    weekly_seasonality=weeklijks_seizoenspatroon)
+                                                    weekly_seasonality=wekelijks_seizoenspatroon)
     # Make predictions with the Linear Regression model for the test data
     y_preds_test_lin_reg = LinearRegressionPredict(df_X_test, 
                                                    model, 
                                                    yearly_seasonality=jaarlijks_seizoenspatroon, 
-                                                   weekly_seasonality=weeklijks_seizoenspatroon)
+                                                   weekly_seasonality=wekelijks_seizoenspatroon)
     y_lin_reg = pd.concat([y_preds_train_lin_reg, y_preds_test_lin_reg])
 
     df_real = pd.concat([df_y_train, df_y_test], axis=0)
@@ -222,93 +233,141 @@ def pas_lineaire_regressie_toe(data,
                                 end_train=tot_datum_train_periode, 
                                 start_test=vanaf_datum_test_periode, 
                                 end_test=tot_datum_test_periode, 
-                                shapes=True)
+                                shapes=zie_traintest_periodes)
 
     return df_total
 
+def voorspel(
+        data,
+        onderwerp,
+        model,
+        voorspellen_tot_datum,
+        vensterlengte,
+        verschuiving,
+        jaarlijks_patroon,
+        wekelijks_patroon,
+        graad,
+        zie_traintest_periodes=False
+):
+    vanaf_datum_train_periode = data.index.min()
+    tot_datum_train_periode = data.index.max()
+    vanaf_datum_test_periode = data.index.max()
+    tot_datum_test_periode = voorspellen_tot_datum
+    model = str(model).lower()
+    if model not in ['voortschrijdend_gemiddelde', 'regressie']:
+        raise ValueError("Model niet gevonden. Kies uit 'voortschrijdend_gemiddelde' of 'regressie'")
+    if model == 'voortschrijdend_gemiddelde':
+        df = pas_voortschrijdend_gemiddelde_toe(
+            data=data,
+            onderwerp=onderwerp,
+            vensterlengte=vensterlengte,
+            verschuiving=verschuiving,
+            vanaf_datum_train_periode = vanaf_datum_train_periode,
+            tot_datum_train_periode = tot_datum_train_periode,
+            vanaf_datum_test_periode = vanaf_datum_test_periode,
+            tot_datum_test_periode = tot_datum_test_periode,
+            zie_traintest_periodes=zie_traintest_periodes
+        )
+    elif model == 'regressie':
+        df = pas_regressie_toe(
+            data=data,
+            onderwerp=onderwerp,
+            jaarlijks_seizoenspatroon=jaarlijks_patroon,
+            wekelijks_seizoenspatroon=wekelijks_patroon,
+            graad=graad,
+            vanaf_datum_train_periode = vanaf_datum_train_periode,
+            tot_datum_train_periode = tot_datum_train_periode,
+            vanaf_datum_test_periode = vanaf_datum_test_periode,
+            tot_datum_test_periode = tot_datum_test_periode,
+            zie_traintest_periodes=zie_traintest_periodes
+        )
+    else:
+        df = data
 
-def pas_modellen_toe(data, 
-                     onderwerp, 
-                     vanaf_datum_train_periode = None,
-                     tot_datum_train_periode = None,
-                     vanaf_datum_test_periode = None,
-                     tot_datum_test_periode = None,
-                     window_size = 7,
-                     shift_period = 365,
-                     yearly_seasonality=False,
-                     weekly_seasonality=False,
-                     transformation=None, n_bins=4, strategy='uniform', n_knots=10, degree=3,
-                     predict=False):
+    return df
+
+# def pas_modellen_toe(data, 
+#                      onderwerp, 
+#                      vanaf_datum_train_periode = None,
+#                      tot_datum_train_periode = None,
+#                      vanaf_datum_test_periode = None,
+#                      tot_datum_test_periode = None,
+#                      window_size = 7,
+#                      shift_period = 365,
+#                      yearly_seasonality=False,
+#                      weekly_seasonality=False,
+#                      transformation=None, n_bins=4, strategy='uniform', n_knots=10, degree=3,
+#                      predict=False):
     
-    vanaf_datum_train_periode, tot_datum_train_periode, \
-        vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
-                                                                           tot_datum_train_periode, 
-                                                                           vanaf_datum_test_periode, 
-                                                                           tot_datum_test_periode)
+#     vanaf_datum_train_periode, tot_datum_train_periode, \
+#         vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
+#                                                                            tot_datum_train_periode, 
+#                                                                            vanaf_datum_test_periode, 
+#                                                                            tot_datum_test_periode)
 
-    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(data, 
-                                                            onderwerp, 
-                                                            vanaf_datum_train_periode, 
-                                                            tot_datum_train_periode, 
-                                                            vanaf_datum_test_periode, 
-                                                            tot_datum_test_periode)
+#     df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(data, 
+#                                                             onderwerp, 
+#                                                             vanaf_datum_train_periode, 
+#                                                             tot_datum_train_periode, 
+#                                                             vanaf_datum_test_periode, 
+#                                                             tot_datum_test_periode)
 
-    # Apply average model
-    # Calculate the average of the train data
-    average = calc_average(df_y_train)
-    # Predict the average for the train data
-    y_preds_train_avg = predict_with_average(df_y_train, average)
-    # Predict the average for the test data
-    y_preds_test_avg = predict_with_average(df_y_test, average)
-    y_avg = pd.concat([y_preds_train_avg, y_preds_test_avg])
+#     # Apply average model
+#     # Calculate the average of the train data
+#     average = calc_average(df_y_train)
+#     # Predict the average for the train data
+#     y_preds_train_avg = predict_with_average(df_y_train, average)
+#     # Predict the average for the test data
+#     y_preds_test_avg = predict_with_average(df_y_test, average)
+#     y_avg = pd.concat([y_preds_train_avg, y_preds_test_avg])
     
-    # Apply moving average model
-    # Calculate the moving average of the training data
-    df_y_train_test = pd.concat([df_y_train, df_y_test])
-    y_mov_avg = calc_moving_average(df_y_train_test, 
-                                                window_size=window_size, 
-                                                shift_period=shift_period, 
-                                                predict_to_date=tot_datum_test_periode,
-                                                predict=predict)
+#     # Apply moving average model
+#     # Calculate the moving average of the training data
+#     df_y_train_test = pd.concat([df_y_train, df_y_test])
+#     y_mov_avg = calc_moving_average(df_y_train_test, 
+#                                                 window_size=window_size, 
+#                                                 shift_period=shift_period, 
+#                                                 predict_to_date=tot_datum_test_periode,
+#                                                 predict=predict)
 
-    # Apply Linear Regression model
-    # Get Linear Regression model
-    model = LinearRegressionTrain(df_X_train, 
-                                  df_y_train, 
-                                  yearly_seasonality=yearly_seasonality, 
-                                  weekly_seasonality=weekly_seasonality,
-                                  transformation=transformation, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=degree)
-    # Make predictions with the Linear Regression model for the train data
-    y_preds_train_lin_reg = LinearRegressionPredict(df_X_train, 
-                                                    model, 
-                                                    yearly_seasonality=yearly_seasonality, 
-                                                    weekly_seasonality=weekly_seasonality)
-    # Make predictions with the Linear Regression model for the test data
-    y_preds_test_lin_reg = LinearRegressionPredict(df_X_test, 
-                                                   model, 
-                                                   yearly_seasonality=yearly_seasonality, 
-                                                   weekly_seasonality=weekly_seasonality)
-    y_lin_reg = pd.concat([y_preds_train_lin_reg, y_preds_test_lin_reg])
+#     # Apply Linear Regression model
+#     # Get Linear Regression model
+#     model = LinearRegressionTrain(df_X_train, 
+#                                   df_y_train, 
+#                                   yearly_seasonality=yearly_seasonality, 
+#                                   weekly_seasonality=weekly_seasonality,
+#                                   transformation=transformation, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=degree)
+#     # Make predictions with the Linear Regression model for the train data
+#     y_preds_train_lin_reg = LinearRegressionPredict(df_X_train, 
+#                                                     model, 
+#                                                     yearly_seasonality=yearly_seasonality, 
+#                                                     weekly_seasonality=weekly_seasonality)
+#     # Make predictions with the Linear Regression model for the test data
+#     y_preds_test_lin_reg = LinearRegressionPredict(df_X_test, 
+#                                                    model, 
+#                                                    yearly_seasonality=yearly_seasonality, 
+#                                                    weekly_seasonality=weekly_seasonality)
+#     y_lin_reg = pd.concat([y_preds_train_lin_reg, y_preds_test_lin_reg])
     
-    df_real = pd.concat([df_y_train, df_y_test], axis=0)
-    df_real.name = onderwerp
+#     df_real = pd.concat([df_y_train, df_y_test], axis=0)
+#     df_real.name = onderwerp
 
-    df_y_all = pd.DataFrame()
-    df_y_all['Gemiddelde'] = y_avg
-    df_y_all['Voortschrijdend gemiddelde'] = y_mov_avg
-    df_y_all['Lineaire regressie'] = y_lin_reg
+#     df_y_all = pd.DataFrame()
+#     df_y_all['Gemiddelde'] = y_avg
+#     df_y_all['Voortschrijdend gemiddelde'] = y_mov_avg
+#     df_y_all['Lineaire regressie'] = y_lin_reg
 
     
-    df_total = pd.concat([df_real, df_y_all], axis=1)
+#     df_total = pd.concat([df_real, df_y_all], axis=1)
 
-    plot_prediction_with_shapes(df=df_total, 
-                                start_train=vanaf_datum_train_periode, 
-                                end_train=tot_datum_train_periode, 
-                                start_test=vanaf_datum_test_periode, 
-                                end_test=tot_datum_test_periode, 
-                                shapes=True)
+#     plot_prediction_with_shapes(df=df_total, 
+#                                 start_train=vanaf_datum_train_periode, 
+#                                 end_train=tot_datum_train_periode, 
+#                                 start_test=vanaf_datum_test_periode, 
+#                                 end_test=tot_datum_test_periode, 
+#                                 shapes=True)
 
-    return df_total
+#     return df_total
 
 def onderzoek_afwijkingen(list_of_dfs, onderwerp, start=None, end=None, show='errors'):
     df = combine_dfs_of_models(list_of_dfs)
@@ -328,7 +387,7 @@ def onderzoek_afwijkingen(list_of_dfs, onderwerp, start=None, end=None, show='er
         raise ValueError("Kies een van de volgende opties: 'errors', 'distribution' of 'both'.")
 
 
-def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics=[calc_average_error, calc_max_error, calc_r2_score, calc_MAE]):
+def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics=[accuracy, calc_max_error, calc_MAE]):
     """_summary_
 
     Parameters
@@ -342,7 +401,7 @@ def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics
     end : _type_
         _description_
     list_metrics : _type_
-        _description_[calc_r2_score, calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE]
+        _description_[accuracy, calc_r2_score, calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE]
 
     Returns
     -------
@@ -365,119 +424,120 @@ def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics
         for metric in list_metrics:
             df_metrics.loc[col, metric.__name__] = metric(_df[onderwerp], _df[col])
     df_metrics.rename(columns={
+        'accuracy': 'Juistheid',
         'calc_r2_score': 'R2-score',
         'calc_sum_of_errors': 'Totale afwijking', 
         'calc_average_error': 'Gemiddelde afwijking', 
         'calc_max_error': 'Maximale afwijking',
-        'calc_MAE': 'Mean Absolute Error', 
+        'calc_MAE': 'Gemiddelde absolute afwijking', 
         'calc_MAPE': 'Mean Absolute Percentage Error', 
         'calc_RMSE': 'Root Mean Squared Error'}, 
         inplace=True)
     return df_metrics
 
-def pas_parameters_toe_en_evalueer(df, 
-                     onderwerp, 
-                     vanaf_datum_train_periode = '2019-01-01',
-                     tot_datum_train_periode = '2023-05-15',
-                     vanaf_datum_test_periode = '2023-05-15',
-                     tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d'),
-                     window_size = 7,
-                     shift_period = 365,
-                     yearly_seasonality=False,
-                     weekly_seasonality=False,
-                     transformation=None, n_bins=4, strategy='uniform', n_knots=10, degree=3,
-                     predict=False,
-                     shapes=True):
+# def pas_parameters_toe_en_evalueer(df, 
+#                      onderwerp, 
+#                      vanaf_datum_train_periode = '2019-01-01',
+#                      tot_datum_train_periode = '2023-05-15',
+#                      vanaf_datum_test_periode = '2023-05-15',
+#                      tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d'),
+#                      window_size = 7,
+#                      shift_period = 365,
+#                      yearly_seasonality=False,
+#                      weekly_seasonality=False,
+#                      transformation='spline', n_bins=4, strategy='uniform', n_knots=2, degree=3,
+#                      predict=False,
+#                      shapes=True):
     
-    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(df, 
-                                                            onderwerp, 
-                                                            vanaf_datum_train_periode, 
-                                                            tot_datum_train_periode, 
-                                                            vanaf_datum_test_periode, 
-                                                            tot_datum_test_periode)
+#     df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(df, 
+#                                                             onderwerp, 
+#                                                             vanaf_datum_train_periode, 
+#                                                             tot_datum_train_periode, 
+#                                                             vanaf_datum_test_periode, 
+#                                                             tot_datum_test_periode)
 
-    # Apply average model
-    # Calculate the average of the train data
-    average = calc_average(df_y_train)
-    # Predict the average for the train data
-    y_preds_train_avg = predict_with_average(df_y_train, average)
-    # Predict the average for the test data
-    y_preds_test_avg = predict_with_average(df_y_test, average)
-    y_avg = pd.concat([y_preds_train_avg, y_preds_test_avg])
+#     # Apply average model
+#     # Calculate the average of the train data
+#     average = calc_average(df_y_train)
+#     # Predict the average for the train data
+#     y_preds_train_avg = predict_with_average(df_y_train, average)
+#     # Predict the average for the test data
+#     y_preds_test_avg = predict_with_average(df_y_test, average)
+#     y_avg = pd.concat([y_preds_train_avg, y_preds_test_avg])
     
-    # Apply moving average model
-    # Calculate the moving average of the training data
-    df_y_train_test = pd.concat([df_y_train, df_y_test])
-    y_mov_avg = calc_moving_average(df_y_train_test, 
-                                                window_size=window_size, 
-                                                shift_period=shift_period, 
-                                                predict_to_date=tot_datum_test_periode,
-                                                predict=predict)
+#     # Apply moving average model
+#     # Calculate the moving average of the training data
+#     df_y_train_test = pd.concat([df_y_train, df_y_test])
+#     y_mov_avg = calc_moving_average(df_y_train_test, 
+#                                                 window_size=window_size, 
+#                                                 shift_period=shift_period, 
+#                                                 predict_to_date=tot_datum_test_periode,
+#                                                 predict=predict)
 
-    # Apply Linear Regression model
-    # Get Linear Regression model
-    model = LinearRegressionTrain(df_X_train, 
-                                  df_y_train, 
-                                  yearly_seasonality=yearly_seasonality, 
-                                  weekly_seasonality=weekly_seasonality,
-                                  transformation=transformation, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=degree)
-    # Make predictions with the Linear Regression model for the train data
-    y_preds_train_lin_reg = LinearRegressionPredict(df_X_train, 
-                                                    model, 
-                                                    yearly_seasonality=yearly_seasonality, 
-                                                    weekly_seasonality=weekly_seasonality)
-    # Make predictions with the Linear Regression model for the test data
-    y_preds_test_lin_reg = LinearRegressionPredict(df_X_test, 
-                                                   model, 
-                                                   yearly_seasonality=yearly_seasonality, 
-                                                   weekly_seasonality=weekly_seasonality)
-    y_lin_reg = pd.concat([y_preds_train_lin_reg, y_preds_test_lin_reg])
+#     # Apply Linear Regression model
+#     # Get Linear Regression model
+#     model = LinearRegressionTrain(df_X_train, 
+#                                   df_y_train, 
+#                                   yearly_seasonality=yearly_seasonality, 
+#                                   weekly_seasonality=weekly_seasonality,
+#                                   transformation=transformation, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=degree)
+#     # Make predictions with the Linear Regression model for the train data
+#     y_preds_train_lin_reg = LinearRegressionPredict(df_X_train, 
+#                                                     model, 
+#                                                     yearly_seasonality=yearly_seasonality, 
+#                                                     weekly_seasonality=weekly_seasonality)
+#     # Make predictions with the Linear Regression model for the test data
+#     y_preds_test_lin_reg = LinearRegressionPredict(df_X_test, 
+#                                                    model, 
+#                                                    yearly_seasonality=yearly_seasonality, 
+#                                                    weekly_seasonality=weekly_seasonality)
+#     y_lin_reg = pd.concat([y_preds_train_lin_reg, y_preds_test_lin_reg])
     
-    df_real = pd.concat([df_y_train, df_y_test], axis=0)
-    df_real.name = onderwerp
+#     df_real = pd.concat([df_y_train, df_y_test], axis=0)
+#     df_real.name = onderwerp
 
-    df_y_all = pd.DataFrame()
-    df_y_all['Gemiddelde'] = y_avg
-    df_y_all['Voortschrijdend gemiddelde'] = y_mov_avg
-    df_y_all['Lineaire regressie'] = y_lin_reg
+#     df_y_all = pd.DataFrame()
+#     df_y_all['Gemiddelde'] = y_avg
+#     df_y_all['Voortschrijdend gemiddelde'] = y_mov_avg
+#     df_y_all['Lineaire regressie'] = y_lin_reg
 
     
-    df_total = pd.concat([df_real, df_y_all], axis=1)
+#     df_total = pd.concat([df_real, df_y_all], axis=1)
 
-    plot_prediction_with_shapes(df=df_total, 
-                                start_train=vanaf_datum_train_periode, 
-                                end_train=tot_datum_train_periode, 
-                                start_test=vanaf_datum_test_periode, 
-                                end_test=tot_datum_test_periode, 
-                                shapes=shapes)
+#     plot_prediction_with_shapes(df=df_total, 
+#                                 start_train=vanaf_datum_train_periode, 
+#                                 end_train=tot_datum_train_periode, 
+#                                 start_test=vanaf_datum_test_periode, 
+#                                 end_test=tot_datum_test_periode, 
+#                                 shapes=shapes)
 
-    return df_total
+#     return df_total
 
-def voorspel(df, 
-                onderwerp, 
-                vanaf_datum_train_periode = '2019-01-01',
-                tot_datum_train_periode = '2023-05-15',
-                vanaf_datum_test_periode = '2023-05-15',
-                tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d'),
-                window_size = 7,
-                shift_period = 365,
-                yearly_seasonality=False,
-                weekly_seasonality=False,
-                transformation=None, n_bins=4, strategy='uniform', n_knots=10, degree=3,
-                predict=False,
-                shapes=False):
+# def voorspel(df, 
+#                 onderwerp, 
+#                 vanaf_datum_train_periode = '2019-01-01',
+#                 tot_datum_train_periode = '2023-05-15',
+#                 vanaf_datum_test_periode = '2023-05-15',
+#                 tot_datum_test_periode = datetime.datetime.now().strftime('%Y-%m-%d'),
+#                 window_size = 7,
+#                 shift_period = 365,
+#                 yearly_seasonality=False,
+#                 weekly_seasonality=False,
+#                 transformation=None, n_bins=4, strategy='uniform', n_knots=10, degree=3,
+#                 predict=False,
+#                 shapes=False):
 
-    df_voorspel = pas_parameters_toe_en_evalueer(df=df, 
-                onderwerp=onderwerp, 
-                vanaf_datum_train_periode = vanaf_datum_train_periode,
-                tot_datum_train_periode = tot_datum_train_periode,
-                vanaf_datum_test_periode = vanaf_datum_test_periode,
-                tot_datum_test_periode = tot_datum_test_periode,
-                window_size = window_size,
-                shift_period = shift_period,
-                yearly_seasonality=yearly_seasonality,
-                weekly_seasonality=weekly_seasonality,
-                transformation=transformation, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=degree,
-                predict=predict,
-                shapes=shapes)
-    return df_voorspel
+#     df_voorspel = pas_parameters_toe_en_evalueer(df=df, 
+#                 onderwerp=onderwerp, 
+#                 vanaf_datum_train_periode = vanaf_datum_train_periode,
+#                 tot_datum_train_periode = tot_datum_train_periode,
+#                 vanaf_datum_test_periode = vanaf_datum_test_periode,
+#                 tot_datum_test_periode = tot_datum_test_periode,
+#                 window_size = window_size,
+#                 shift_period = shift_period,
+#                 yearly_seasonality=yearly_seasonality,
+#                 weekly_seasonality=weekly_seasonality,
+#                 transformation=transformation, n_bins=n_bins, strategy=strategy, n_knots=n_knots, degree=degree,
+#                 predict=predict,
+#                 shapes=shapes)
+#     return df_voorspel

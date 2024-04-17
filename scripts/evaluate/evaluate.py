@@ -175,6 +175,9 @@ def plot_distribution(df, base_col, start, end):
 #     plot_errors(df=df, base_col=onderwerp, start=start, end=end)
 #     plot_distribution(df=df, base_col=onderwerp, start=start, end=end)
 
+def accuracy(y_true, y_pred):
+    return sum(y_pred)/sum(y_true)
+
 def calc_r2_score(y_true, y_pred):
     return r2_score(y_true, y_pred)
 
