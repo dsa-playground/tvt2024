@@ -21,8 +21,8 @@ def laad_data():
 def bekijk_ziekteverzuim(df):
     plot_timeseries(df, 'Ziekteverzuim')
 
-def bekijk_zzp(df):
-    plot_timeseries(df, 'ZZP')
+def bekijk_clienten(df):
+    plot_timeseries(df, 'Cliënten')
 
 def bekijk_flexpool(df):
     plot_timeseries(df, 'Flexpool')
@@ -30,7 +30,7 @@ def bekijk_flexpool(df):
 def kies_onderwerp():
     vraag = """
         Welke reeks wil je voorspellen (a, b, c):
-                a. ZZP (verwachting clienten)
+                a. Cliënten (Zorgzwaartepakket 6 of hoger)
                 b. Ziekteverzuim(percentage)
                 c. Flexpool (aantal personen)
         """
@@ -39,7 +39,7 @@ def kies_onderwerp():
     str = collect_str_input(
         question=vraag, 
         possible_entries=mogelijke_antwoorden)
-    dict_antwoorden = {'a': 'ZZP', 'b': 'Ziekteverzuim', 'c': 'Flexpool'}
+    dict_antwoorden = {'a': 'Cliënten', 'b': 'Ziekteverzuim', 'c': 'Flexpool'}
     print(f'Gekozen antwoord: {dict_antwoorden[str]}')
     return dict_antwoorden[str]
 

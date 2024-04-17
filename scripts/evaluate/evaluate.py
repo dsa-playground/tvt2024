@@ -11,9 +11,9 @@ from sklearn.metrics import r2_score, mean_absolute_percentage_error, mean_absol
 def plot_timeseries(df, col, date_untill='2024-05-15'):
     df_plot = df.loc[df.index < date_untill].copy()
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot[col], mode='lines', name=col))
-    if col == 'ZZP':
-        y_axis_title = f'Aantal clienten'
+    fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot[col], mode='lines', name=col, line=dict(color='#0084B2')))
+    if col == 'Cliënten':
+        y_axis_title = f'Aantal cliënten'
     elif col == 'Ziekteverzuim':
         y_axis_title = f'Ziekteverzuimpercentage (%)'
     elif col == 'Inkoop':
@@ -22,13 +22,17 @@ def plot_timeseries(df, col, date_untill='2024-05-15'):
         y_axis_title = f'Flexpool (aantal personen)'
     else: 
         y_axis_title = f'Onbekende eenheid'
-    fig.update_layout(title=f'Weergave van {col} over de tijd', xaxis_title='Datum', yaxis_title=y_axis_title)
+    fig.update_layout(title=f'Weergave van {col} over de tijd', 
+                      xaxis_title='Datum', 
+                      yaxis_title=y_axis_title,
+                      plot_bgcolor='white',
+            paper_bgcolor='white')
     fig.show()
 
 
 def plot_prediction_with_shapes(df, start_train=None, end_train=None, start_test=None, end_test=None, shapes=False, show_y_zero=False):
 
-    color_dict = {'ZZP':'#0084B2', 
+    color_dict = {'Cliënten':'#0084B2', 
                   'Ziekteverzuim': '#0084B2', # #0084B2 #646A69
                   'Inkoop': '#0084B2', 
                   'Flexpool': '#0084B2',
@@ -152,7 +156,7 @@ def plot_distribution(df, base_col, start, end):
     hist_data = [df_error[col] for col in df_error.columns]
     group_labels = list(df_error.columns)
 
-    color_dict = {'ZZP':'#0084B2', 
+    color_dict = {'Cliënten':'#0084B2', 
                     'Ziekteverzuim': '#0084B2', # #0084B2 #646A69
                     'Inkoop': '#0084B2', 
                     'Flexpool': '#0084B2',
