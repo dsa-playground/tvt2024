@@ -162,11 +162,11 @@ def calc_moving_average(data, window_size, shift_period, predict_to_date, base_c
 #     X_train_num = X_train_num[[col for col in X_train_num.columns if 'transformation' in col]]
 #     return X_train_num
 
-def LinearRegressionTrain(X_train, y_train, yearly_seasonality=False, weekly_seasonality=False, transformation='geen', n_bins=4, strategy='uniform', n_knots=10, degree=3):
+def LinearRegressionTrain(X_train, y_train, yearly_seasonality=False, weekly_seasonality=False, transformation='lineair', n_bins=4, strategy='uniform', n_knots=10, degree=3):
     # Transform the training data
     X_train_num = LinearRegressionTransformation(X_train, yearly_seasonality, weekly_seasonality)
     
-    if transformation == 'geen':
+    if transformation == 'lineair':
         model = LinearRegression()
     elif transformation == 'binnes':
         # X_train_num['Datum'] = X_train_num['date_transformation'].map(datetime.datetime.fromordinal)

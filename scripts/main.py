@@ -98,7 +98,8 @@ def pas_voortschrijdend_gemiddelde_toe(data,
                      vensterlengte = 7,
                      verschuiving = 0,
                      predict=False,
-                     zie_traintest_periodes=False):
+                     zie_traintest_periodes=True,
+                     plot=True):
     _data = data.copy()
     if (isinstance(vensterlengte, int) is False) | (vensterlengte < 1):
         raise ValueError("De vensterlengte moet een geheel getal zijn én groter of gelijk aan 1.")
@@ -144,12 +145,14 @@ def pas_voortschrijdend_gemiddelde_toe(data,
     df_real.name = onderwerp
     df_total = pd.concat([df_real, df_y_all], axis=1)
 
-    plot_prediction_with_shapes(df=df_total, 
-                                start_train=vanaf_datum_train_periode, 
-                                end_train=tot_datum_train_periode, 
-                                start_test=vanaf_datum_test_periode, 
-                                end_test=tot_datum_test_periode, 
-                                shapes=zie_traintest_periodes)
+    
+    if plot is True:
+        plot_prediction_with_shapes(df=df_total, 
+                                    start_train=vanaf_datum_train_periode, 
+                                    end_train=tot_datum_train_periode, 
+                                    start_test=vanaf_datum_test_periode, 
+                                    end_test=tot_datum_test_periode, 
+                                    shapes=zie_traintest_periodes)
 
     return df_total
 
@@ -161,10 +164,15 @@ def pas_regressie_toe(data,
                      tot_datum_test_periode = None,
                      jaarlijks_seizoenspatroon=False,
                      wekelijks_seizoenspatroon=False,
-                     transformatie='spline', n_bins=4, strategy='uniform', n_knots=2, graad=1,
-                     zie_traintest_periodes=False):
+                     transformatie=None, n_bins=4, strategy='uniform', n_knots=2, graad=1,
+                     zie_traintest_periodes=True,
+                     plot=True):
     _data = data.copy()
-
+    if transformatie is None:
+        if onderwerp == 'Cliënten':
+            transformatie = 'lineair'
+        elif onderwerp in ['Ziekteverzuim', 'Flexpool']:
+            transformatie = 'spline'
     transformatie = str(transformatie).lower()
     if isinstance(jaarlijks_seizoenspatroon, bool) is False:
         raise ValueError("Het getal voor jaarlijks_seizoenspatroon moet een boolean (True/False) zijn.")
@@ -174,8 +182,8 @@ def pas_regressie_toe(data,
         raise ValueError("Het getal voor k_nots moet 2 of groter zijn.")
     if (isinstance(graad, int) is False) | (graad < 1):
         raise ValueError("Het getal voor graad moet een geheel getal zijn én groter of gelijk aan 1.")
-    if transformatie not in ['geen', 'binnes', 'spline', 'polynomial']:
-        raise ValueError("De transformatie moet 'geen', 'binnes', 'spline' of 'polynomial' zijn.")
+    if transformatie not in ['lineair', 'binnes', 'spline', 'polynomial']:
+        raise ValueError("De transformatie moet 'lineair', 'binnes', 'spline' of 'polynomial' zijn.")
 
     vanaf_datum_train_periode, tot_datum_train_periode, \
         vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
@@ -213,16 +221,17 @@ def pas_regressie_toe(data,
     df_real.name = onderwerp
 
     df_y_all = pd.DataFrame()
-    df_y_all['Lineaire regressie'] = y_lin_reg
+    df_y_all['Regressie'] = y_lin_reg
     df_y_all.index = df_real.index
     df_total = pd.concat([df_real, df_y_all], axis=1)
 
-    plot_prediction_with_shapes(df=df_total, 
-                                start_train=vanaf_datum_train_periode, 
-                                end_train=tot_datum_train_periode, 
-                                start_test=vanaf_datum_test_periode, 
-                                end_test=tot_datum_test_periode, 
-                                shapes=zie_traintest_periodes)
+    if plot is True:
+        plot_prediction_with_shapes(df=df_total, 
+                                    start_train=vanaf_datum_train_periode, 
+                                    end_train=tot_datum_train_periode, 
+                                    start_test=vanaf_datum_test_periode, 
+                                    end_test=tot_datum_test_periode, 
+                                    shapes=zie_traintest_periodes)
 
     return df_total
 
@@ -247,9 +256,9 @@ def voorspel(
     vanaf_datum_test_periode = maximum_date
     tot_datum_test_periode = voorspellen_tot_datum
     if model is None:
-        if onderwerp == 'Cliënten':
+        if onderwerp == 'Flexpool':
             model = 'voortschrijdend_gemiddelde'
-        elif onderwerp in ['Ziekteverzuim', 'Flexpool']:
+        elif onderwerp in ['Cliënten', 'Ziekteverzuim']:
             model = 'regressie'
         else:
             raise ValueError("Onderwerp niet gevonden. Kies uit 'Cliënten', 'Ziekteverzuim' of 'Flexpool'.")
@@ -259,30 +268,30 @@ def voorspel(
     if onderwerp == 'Cliënten':
         ## Instellingen model voortschrijdend gemiddelde
         vensterlengte = 7
-        verschuiving = 365
+        verschuiving = 7
 
         ## Instellingen regressiemodel
-        jaarlijks_patroon=True
-        wekelijks_patroon=True
-        graad=12
+        jaarlijks_patroon=False
+        wekelijks_patroon=False
+        graad=1 # nvt
     elif onderwerp == 'Ziekteverzuim':
         ## Instellingen model voortschrijdend gemiddelde
-        vensterlengte = 7
-        verschuiving = 365
+        vensterlengte = 1
+        verschuiving = 3
 
         ## Instellingen regressiemodel
         jaarlijks_patroon=True
         wekelijks_patroon=True
-        graad=4
+        graad=10
     elif onderwerp == 'Flexpool':
         ## Instellingen model voortschrijdend gemiddelde
-        vensterlengte = 7
-        verschuiving = 365
+        vensterlengte = 21
+        verschuiving = 1
 
         ## Instellingen regressiemodel
-        jaarlijks_patroon=True
-        wekelijks_patroon=True
-        graad=4
+        jaarlijks_patroon=False
+        wekelijks_patroon=False
+        graad=9
     
     
     if model not in ['voortschrijdend_gemiddelde', 'regressie']:
@@ -418,7 +427,7 @@ def onderzoek_afwijkingen(list_of_dfs, onderwerp, start=None, end=None, show='er
         raise ValueError("Kies een van de volgende opties: 'errors', 'distribution' of 'both'.")
 
 
-def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics=[accuracy, calc_max_error, calc_MAE]):
+def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics=[accuracy, calc_max_error, calc_MAE], print_statement=True):
     """_summary_
 
     Parameters
@@ -447,7 +456,8 @@ def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics
     if end is None:
         end = df.index.max()
     _df = df.loc[start:end].copy()
-    print(f"De periode die wordt geanalyseerd is van {start} tot {end}.")
+    if print_statement is True:
+        print(f"De periode die wordt geanalyseerd is van {start} tot {end}.")
     df_metrics = pd.DataFrame()
     metric_cols = [col for col in _df.columns if onderwerp not in col]
 
@@ -516,7 +526,7 @@ def optie_2(data, onderwerp):
     )
 
     ## Instellingen regressiemodel
-    jaarlijks_patroon=True
+    jaarlijks_patroon=False
     wekelijks_patroon=True
     graad=3
 

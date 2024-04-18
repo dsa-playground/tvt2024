@@ -38,10 +38,10 @@ def plot_prediction_with_shapes(df, start_train=None, end_train=None, start_test
                   'Flexpool': '#0084B2',
                   'Gemiddelde': '#F8AF5E', 
                   'Voortschrijdend gemiddelde': '#a55233', # #a55233 #0084B2
-                  'Lineaire regressie': '#402a23',
+                  'Regressie': '#402a23',
                   'Gemiddelde error': '#F8AF5E', 
                   'Voortschrijdend gemiddelde error': '#a55233', # #a55233 #0084B2
-                  'Lineaire regressie error': '#402a23',
+                  'Regressie error': '#402a23',
                   }  # #F85EF4 #402a23 #AF5EF8
     ## Plot results
     fig = go.Figure()
@@ -162,10 +162,10 @@ def plot_distribution(df, base_col, start, end):
                     'Flexpool': '#0084B2',
                     'Gemiddelde': '#F8AF5E', 
                     'Voortschrijdend gemiddelde': '#a55233', # #a55233 #0084B2
-                    'Lineaire regressie': '#402a23',
+                    'Regressie': '#402a23',
                     'Gemiddelde error': '#F8AF5E', 
                     'Voortschrijdend gemiddelde error': '#a55233', # #a55233 #0084B2
-                    'Lineaire regressie error': '#402a23',
+                    'Regressie error': '#402a23',
                     } 
     colors = [v for k,v in color_dict.items() if k in group_labels]
     fig = ff.create_distplot(hist_data, group_labels, bin_size=.2, colors=colors)
