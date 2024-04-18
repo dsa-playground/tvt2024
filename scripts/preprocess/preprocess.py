@@ -135,7 +135,9 @@ def make_X_y(df, onderwerp, vanaf_datum_train_periode, tot_datum_train_periode, 
         raise ValueError("Let op: tot_datum_train_periode moet kleiner zijn dan de maximale datum in de dataset. Kies andere waarden aub.")
     
     minimum_date = datetime.datetime(2019,1,1)
-    maximum_date = datetime.datetime.now() - datetime.timedelta(days=1)
+    maximum_data_dataset = datetime.datetime(2024,12,31)
+    date_yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+    maximum_date = min(date_yesterday, maximum_data_dataset)
     data = df.loc[(df.index >= minimum_date) & (df.index < maximum_date)].copy()
     if tot_datum_test_periode > data.index.max():
         range_dates_extend = pd.date_range(start=data.index.max() + datetime.timedelta(days=1), 
@@ -171,6 +173,19 @@ def combine_dfs_of_models(list_of_dfs):
             df = df.drop(columns=common_cols)
             df_combined = pd.concat([df_combined, df], axis=1)
     return df_combined
+
+def calibrate_dates(start_train, end_train, start_test, end_test):
+    date_today = datetime.datetime.now()
+    year_in_the_past = date_today - datetime.timedelta(days=365)
+    if start_train == None:
+        start_train = '2019-01-01'
+    if end_train == None:
+        end_train = year_in_the_past.strftime('%Y-%m-%d')
+    if start_test == None:
+        start_test = year_in_the_past.strftime('%Y-%m-%d')
+    if end_test == None:
+        end_test = date_today.strftime('%Y-%m-%d')
+    return start_train, end_train, start_test, end_test
 
 # def plot_timeseries(df, col, date_untill='2024-05-15'):
 #     df_plot = df.loc[df.index < date_untill].copy()

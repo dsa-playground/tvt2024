@@ -1,7 +1,7 @@
 import datetime as datetime
 import pandas as pd
 from scripts.evaluate.evaluate import plot_prediction_with_shapes
-from scripts.preprocess.preprocess import load_timeseries_data, collect_str_input, make_X_y, combine_dfs_of_models
+from scripts.preprocess.preprocess import load_timeseries_data, collect_str_input, make_X_y, combine_dfs_of_models, calibrate_dates
 from scripts.evaluate.evaluate import plot_timeseries, plot_errors, plot_distribution, accuracy, calc_r2_score, calc_sum_of_errors, calc_average_error, calc_max_error, calc_MAE, calc_MAPE, calc_RMSE
 from scripts.model.model import calc_average, predict_with_average, calc_moving_average, LinearRegressionTrain, LinearRegressionPredict
 
@@ -42,19 +42,6 @@ def kies_onderwerp():
     dict_antwoorden = {'a': 'Cliënten', 'b': 'Ziekteverzuim', 'c': 'Flexpool'}
     print(f'Gekozen antwoord: {dict_antwoorden[str]}')
     return dict_antwoorden[str]
-
-def calibrate_dates(start_train, end_train, start_test, end_test):
-    date_today = datetime.datetime.now()
-    year_in_the_past = date_today - datetime.timedelta(days=365)
-    if start_train == None:
-        start_train = '2019-01-01'
-    if end_train == None:
-        end_train = year_in_the_past.strftime('%Y-%m-%d')
-    if start_test == None:
-        start_test = year_in_the_past.strftime('%Y-%m-%d')
-    if end_test == None:
-        end_test = date_today.strftime('%Y-%m-%d')
-    return start_train, end_train, start_test, end_test
 
 def pas_gemiddelde_toe(df, 
                      onderwerp, 
@@ -112,6 +99,7 @@ def pas_voortschrijdend_gemiddelde_toe(data,
                      verschuiving = 0,
                      predict=False,
                      zie_traintest_periodes=False):
+    _data = data.copy()
     if (isinstance(vensterlengte, int) is False) | (vensterlengte < 1):
         raise ValueError("De vensterlengte moet een geheel getal zijn én groter of gelijk aan 1.")
     if (isinstance(verschuiving, int) is False) | (verschuiving < 0):
@@ -128,7 +116,7 @@ def pas_voortschrijdend_gemiddelde_toe(data,
     if verschuiving < 0:
         raise ValueError("De verschuiving moet groter of gelijk aan 0 zijn.")
     
-    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(data, 
+    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(_data, 
                                                             onderwerp, 
                                                             vanaf_datum_train_periode, 
                                                             tot_datum_train_periode, 
@@ -175,7 +163,8 @@ def pas_regressie_toe(data,
                      wekelijks_seizoenspatroon=False,
                      transformatie='spline', n_bins=4, strategy='uniform', n_knots=2, graad=1,
                      zie_traintest_periodes=False):
-    
+    _data = data.copy()
+
     transformatie = str(transformatie).lower()
     if isinstance(jaarlijks_seizoenspatroon, bool) is False:
         raise ValueError("Het getal voor jaarlijks_seizoenspatroon moet een boolean (True/False) zijn.")
@@ -194,13 +183,13 @@ def pas_regressie_toe(data,
                                                                            vanaf_datum_test_periode, 
                                                                            tot_datum_test_periode)
 
-    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(data, 
+    df_X_train, df_y_train, df_X_test, df_y_test = make_X_y(_data, 
                                                             onderwerp, 
                                                             vanaf_datum_train_periode, 
                                                             tot_datum_train_periode, 
                                                             vanaf_datum_test_periode, 
                                                             tot_datum_test_periode)
-
+    
     # Apply Linear Regression model
     # Get Linear Regression model
     model = LinearRegressionTrain(df_X_train, 
@@ -240,25 +229,67 @@ def pas_regressie_toe(data,
 def voorspel(
         data,
         onderwerp,
-        model,
-        voorspellen_tot_datum,
-        vensterlengte,
-        verschuiving,
-        jaarlijks_patroon,
-        wekelijks_patroon,
-        graad,
+        voorspellen_tot_datum=None,
+        vensterlengte=None,
+        verschuiving=None,
+        jaarlijks_patroon=None,
+        wekelijks_patroon=None,
+        graad=None,
+        model=None,
         zie_traintest_periodes=False
 ):
-    vanaf_datum_train_periode = data.index.min()
-    tot_datum_train_periode = data.index.max()
-    vanaf_datum_test_periode = data.index.max()
+    _data = data.copy()
+    vanaf_datum_train_periode = _data.index.min()
+    maximum_data_dataset = datetime.datetime(2024,12,31)
+    date_yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+    maximum_date = min(date_yesterday, maximum_data_dataset)
+    tot_datum_train_periode = maximum_date
+    vanaf_datum_test_periode = maximum_date
     tot_datum_test_periode = voorspellen_tot_datum
-    model = str(model).lower()
+    if model is None:
+        if onderwerp == 'Cliënten':
+            model = 'voortschrijdend_gemiddelde'
+        elif onderwerp in ['Ziekteverzuim', 'Flexpool']:
+            model = 'regressie'
+        else:
+            raise ValueError("Onderwerp niet gevonden. Kies uit 'Cliënten', 'Ziekteverzuim' of 'Flexpool'.")
+    else:
+        model = str(model).lower()
+
+    if onderwerp == 'Cliënten':
+        ## Instellingen model voortschrijdend gemiddelde
+        vensterlengte = 7
+        verschuiving = 365
+
+        ## Instellingen regressiemodel
+        jaarlijks_patroon=True
+        wekelijks_patroon=True
+        graad=12
+    elif onderwerp == 'Ziekteverzuim':
+        ## Instellingen model voortschrijdend gemiddelde
+        vensterlengte = 7
+        verschuiving = 365
+
+        ## Instellingen regressiemodel
+        jaarlijks_patroon=True
+        wekelijks_patroon=True
+        graad=4
+    elif onderwerp == 'Flexpool':
+        ## Instellingen model voortschrijdend gemiddelde
+        vensterlengte = 7
+        verschuiving = 365
+
+        ## Instellingen regressiemodel
+        jaarlijks_patroon=True
+        wekelijks_patroon=True
+        graad=4
+    
+    
     if model not in ['voortschrijdend_gemiddelde', 'regressie']:
         raise ValueError("Model niet gevonden. Kies uit 'voortschrijdend_gemiddelde' of 'regressie'")
     if model == 'voortschrijdend_gemiddelde':
         df = pas_voortschrijdend_gemiddelde_toe(
-            data=data,
+            data=_data,
             onderwerp=onderwerp,
             vensterlengte=vensterlengte,
             verschuiving=verschuiving,
@@ -270,7 +301,7 @@ def voorspel(
         )
     elif model == 'regressie':
         df = pas_regressie_toe(
-            data=data,
+            data=_data,
             onderwerp=onderwerp,
             jaarlijks_seizoenspatroon=jaarlijks_patroon,
             wekelijks_seizoenspatroon=wekelijks_patroon,
@@ -282,7 +313,7 @@ def voorspel(
             zie_traintest_periodes=zie_traintest_periodes
         )
     else:
-        df = data
+        df = _data
 
     return df
 
@@ -433,6 +464,111 @@ def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics
         'calc_MAPE': 'Mean Absolute Percentage Error', 
         'calc_RMSE': 'Root Mean Squared Error'}, 
         inplace=True)
+    return df_metrics
+
+def optie_1(data, onderwerp):
+    ## Instellingen model voortschrijdend gemiddelde
+    vensterlengte = 1
+    verschuiving = 7
+
+    ## Toepassen instellingen in model
+    df_voortschrijdend_gemiddelde = pas_voortschrijdend_gemiddelde_toe(
+        data=data,
+        onderwerp=onderwerp,
+        vensterlengte=vensterlengte,
+        verschuiving=verschuiving,
+        zie_traintest_periodes=True
+    )
+
+    ## Instellingen regressiemodel
+    jaarlijks_patroon=True
+    wekelijks_patroon=False
+    graad=1
+
+    ## Toepassen instellingen in model
+    df_regressie = pas_regressie_toe(data=data,
+        onderwerp=onderwerp,
+        jaarlijks_seizoenspatroon=jaarlijks_patroon,
+        wekelijks_seizoenspatroon=wekelijks_patroon,
+        graad=graad,
+        n_knots=3,
+        zie_traintest_periodes=True
+    )
+
+    ## Berekenen metrieken
+    df_metrics = bereken_metrieken(list_of_dfs=[df_voortschrijdend_gemiddelde, df_regressie], 
+                    onderwerp=onderwerp)
+
+    return df_metrics
+
+def optie_2(data, onderwerp):
+    ## Instellingen model voortschrijdend gemiddelde
+    vensterlengte = 1
+    verschuiving = 365
+
+    ## Toepassen instellingen in model
+    df_voortschrijdend_gemiddelde = pas_voortschrijdend_gemiddelde_toe(
+        data=data,
+        onderwerp=onderwerp,
+        vensterlengte=vensterlengte,
+        verschuiving=verschuiving,
+        zie_traintest_periodes=True
+    )
+
+    ## Instellingen regressiemodel
+    jaarlijks_patroon=True
+    wekelijks_patroon=True
+    graad=3
+
+    ## Toepassen instellingen in model
+    df_regressie = pas_regressie_toe(data=data,
+        onderwerp=onderwerp,
+        jaarlijks_seizoenspatroon=jaarlijks_patroon,
+        wekelijks_seizoenspatroon=wekelijks_patroon,
+        graad=graad,
+        n_knots=3,
+        zie_traintest_periodes=True
+    )
+
+    ## Berekenen metrieken
+    df_metrics = bereken_metrieken(list_of_dfs=[df_voortschrijdend_gemiddelde, df_regressie], 
+                    onderwerp=onderwerp)
+
+    return df_metrics
+
+def optie_3(data, onderwerp):
+    ## Instellingen model voortschrijdend gemiddelde
+    vensterlengte = 7
+    verschuiving = 28
+
+    ## Toepassen instellingen in model
+    df_voortschrijdend_gemiddelde = pas_voortschrijdend_gemiddelde_toe(
+        data=data,
+        onderwerp=onderwerp,
+        vensterlengte=vensterlengte,
+        verschuiving=verschuiving,
+        zie_traintest_periodes=True
+    )
+
+    ## Instellingen regressiemodel
+    jaarlijks_patroon=True
+    wekelijks_patroon=True
+    graad=12
+
+    ## Toepassen instellingen in model
+    df_regressie = pas_regressie_toe(data=data,
+        onderwerp=onderwerp,
+        jaarlijks_seizoenspatroon=jaarlijks_patroon,
+        wekelijks_seizoenspatroon=wekelijks_patroon,
+        graad=graad,
+        n_knots=3,
+        zie_traintest_periodes=True
+    )
+
+    ## Berekenen metrieken
+    df_metrics = bereken_metrieken(list_of_dfs=[df_voortschrijdend_gemiddelde, df_regressie], 
+                    onderwerp=onderwerp)
+
     return df_metrics
 
 # def pas_parameters_toe_en_evalueer(df, 
