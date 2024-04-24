@@ -46,7 +46,7 @@ def kies_onderwerp():
     return dict_antwoorden[str]
 
 def pas_gemiddelde_toe(df, 
-                     onderwerp, 
+                     onderwerp='Ziekteverzuim', 
                      vanaf_datum_train_periode = None,
                      tot_datum_train_periode = None,
                      vanaf_datum_test_periode = None,
@@ -92,7 +92,7 @@ def pas_gemiddelde_toe(df,
     return df_total
 
 def pas_voortschrijdend_gemiddelde_toe(data, 
-                     onderwerp, 
+                     onderwerp='Ziekteverzuim', 
                      vanaf_datum_train_periode = None,
                      tot_datum_train_periode = None,
                      vanaf_datum_test_periode = None,
@@ -159,7 +159,7 @@ def pas_voortschrijdend_gemiddelde_toe(data,
     return df_total
 
 def pas_regressie_toe(data, 
-                     onderwerp, 
+                     onderwerp='Ziekteverzuim', 
                      vanaf_datum_train_periode = None,
                      tot_datum_train_periode = None,
                      vanaf_datum_test_periode = None,
@@ -239,7 +239,7 @@ def pas_regressie_toe(data,
 
 def voorspel(
         data,
-        onderwerp,
+        onderwerp='Ziekteverzuim',
         voorspellen_tot_datum=None,
         vensterlengte=None,
         verschuiving=None,
@@ -411,7 +411,7 @@ def voorspel(
 
 #     return df_total
 
-def onderzoek_afwijkingen(list_of_dfs, onderwerp, start=None, end=None, show='errors'):
+def onderzoek_afwijkingen(list_of_dfs, onderwerp='Ziekteverzuim', start=None, end=None, show='errors'):
     df = combine_dfs_of_models(list_of_dfs)
     _, _, start, end = calibrate_dates(None,None, start, end)
     if start is None:
@@ -429,7 +429,7 @@ def onderzoek_afwijkingen(list_of_dfs, onderwerp, start=None, end=None, show='er
         raise ValueError("Kies een van de volgende opties: 'errors', 'distribution' of 'both'.")
 
 
-def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics=[accuracy, calc_max_error, calc_MAE], print_statement=True):
+def bereken_metrieken(list_of_dfs, onderwerp='Ziekteverzuim', start=None, end=None, list_metrics=[accuracy, calc_max_error, calc_MAE], print_statement=True):
     """_summary_
 
     Parameters
@@ -478,7 +478,7 @@ def bereken_metrieken(list_of_dfs, onderwerp, start=None, end=None, list_metrics
         inplace=True)
     return df_metrics
 
-def optie_1(data, onderwerp):
+def optie_1(data, onderwerp='Ziekteverzuim'):
     ## Instellingen model voortschrijdend gemiddelde
     vensterlengte = 1
     verschuiving = 7
@@ -513,7 +513,7 @@ def optie_1(data, onderwerp):
 
     return df_metrics
 
-def optie_2(data, onderwerp):
+def optie_2(data, onderwerp='Ziekteverzuim'):
     ## Instellingen model voortschrijdend gemiddelde
     vensterlengte = 1
     verschuiving = 365
@@ -548,7 +548,7 @@ def optie_2(data, onderwerp):
 
     return df_metrics
 
-def optie_3(data, onderwerp):
+def optie_3(data, onderwerp='Ziekteverzuim'):
     ## Instellingen model voortschrijdend gemiddelde
     vensterlengte = 7
     verschuiving = 28
