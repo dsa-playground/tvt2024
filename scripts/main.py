@@ -34,12 +34,14 @@ def kies_onderwerp():
                 b. Ziekteverzuim(percentage)
                 c. Flexpool (aantal personen)
         """
-    mogelijke_antwoorden = ['a', 'b', 'c', 'd']
+    mogelijke_antwoorden = ['a', 'b', 'c', 'clienten', 'cliënten', 'ziekteverzuim', 'ziekteverzuimpercentage', 'flexpool']
 
     str = collect_str_input(
         question=vraag, 
         possible_entries=mogelijke_antwoorden)
-    dict_antwoorden = {'a': 'Cliënten', 'b': 'Ziekteverzuim', 'c': 'Flexpool'}
+    dict_antwoorden = {'a': 'Cliënten', 'clienten': 'Cliënten', 'cliënten': 'Cliënten',
+                       'b': 'Ziekteverzuim', 'ziekteverzuim': 'Ziekteverzuim', 'ziekteverzuimpercentage': 'Ziekteverzuim',
+                       'c': 'Flexpool', 'flexpool': 'Flexpool'}
     print(f'Gekozen antwoord: {dict_antwoorden[str]}')
     return dict_antwoorden[str]
 

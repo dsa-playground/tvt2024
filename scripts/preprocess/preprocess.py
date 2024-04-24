@@ -1,8 +1,7 @@
 import datetime as datetime
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-from scripts.preprocess.preprocess_collect import collect_str_input
+import time
 
 def load_timeseries_data():
     df = pd.read_csv(filepath_or_buffer='data/Timeseries.csv', sep=';')
@@ -11,6 +10,89 @@ def load_timeseries_data():
     df = df.asfreq('D')
     return df
 
+def collect_int_input(question, boundaries=[]):
+    """Collect integer input given a question and range.
+
+    Parameters
+    ----------
+    question : str
+        Question that will be printed before the 'input()' command.
+    boundaries : list, optional
+        List with two integer values that determine the range within integer should be:
+            * minimum (boundaries[0])
+            * maximum (boundaries[1])
+
+    Returns
+    -------
+    int
+        Integer value collected from the user.
+    """
+    print(question)
+    time.sleep(1)
+    found = False
+
+    while not found:
+        try: 
+            myInt = int(input("Antwoord: "), 10)
+            # time.sleep(1)
+        except Exception:
+            print('Geef een geheel getal.')
+            continue
+        
+        if len(boundaries)>0:
+            if boundaries[0] <= myInt <= boundaries[1]:
+                return myInt
+            elif myInt > boundaries[1]:
+                print(f"Vul een getal in dat lager is dan {boundaries[1]}.")
+            elif myInt < boundaries[0]:
+                print(f"Vul een getal in dat hoger is dan {boundaries[0]}.")
+        else:
+            return myInt
+
+
+def collect_str_input(question, possible_entries=[]):
+    """Collect string input given a question and possible entries (restrictions).
+
+    Parameters
+    ----------
+    question : str
+        Question that will be printed before the 'input()' command.
+    possible_entries : list, optional
+        List of strings that are allowed, by default all entries are allowed.
+
+    Returns
+    -------
+    str
+        String value (lowercase) collected from the user.
+
+    Raises
+    ------
+    ValueError
+        ValueError will be raised if string value is empty.
+    """
+    print(question)
+    time.sleep(1)
+
+    possible_entries = [entry.lower() for entry in possible_entries if isinstance(entry, str)]
+    found = False
+
+    while not found:
+        try: 
+            myStr = input("Antwoord: ").lower()
+            # time.sleep(1)
+            if not (myStr and myStr.strip()):
+                raise ValueError('Leeg veld.')
+        except Exception:
+            print('Een leeg antwoord is niet bruikbaar.')
+            continue
+        
+        if len(possible_entries)>0:
+            if myStr in possible_entries:
+                return myStr
+            else:
+                print(f"Je antwoord moet een van de volgende opties zijn: {possible_entries}.")
+        else:
+          return myStr
 
 # def kies_onderwerp():
 #     vraag = """
