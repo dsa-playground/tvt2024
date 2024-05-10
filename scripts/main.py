@@ -278,13 +278,13 @@ def voorspel(
         graad=1 # nvt
     elif onderwerp == 'Ziekteverzuim':
         ## Instellingen model voortschrijdend gemiddelde
-        vensterlengte = 1
-        verschuiving = 3
+        vensterlengte = 14
+        verschuiving = 365
 
         ## Instellingen regressiemodel
         jaarlijks_patroon=True
         wekelijks_patroon=True
-        graad=10
+        graad=4
     elif onderwerp == 'Flexpool':
         ## Instellingen model voortschrijdend gemiddelde
         vensterlengte = 21
