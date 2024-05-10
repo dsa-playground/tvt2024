@@ -411,7 +411,7 @@ def voorspel(
 
 #     return df_total
 
-def onderzoek_afwijkingen(list_of_dfs, onderwerp='Ziekteverzuim', start=None, end=None, show='errors'):
+def onderzoek_afwijkingen(list_of_dfs, onderwerp='Ziekteverzuim', start=None, end=None, show='errors', yaxis_title="Afwijking"):
     df = combine_dfs_of_models(list_of_dfs)
     _, _, start, end = calibrate_dates(None,None, start, end)
     if start is None:
@@ -419,11 +419,11 @@ def onderzoek_afwijkingen(list_of_dfs, onderwerp='Ziekteverzuim', start=None, en
     if end is None:
         end = df.index.max()
     if show == 'errors':
-        plot_errors(df=df, base_col=onderwerp, start=start, end=end)
+        plot_errors(df=df, base_col=onderwerp, start=start, end=end, yaxis_title=yaxis_title)
     elif show == 'distribution':
         plot_distribution(df=df, base_col=onderwerp, start=start, end=end)
     elif show == 'both':
-        plot_errors(df=df, base_col=onderwerp, start=start, end=end)
+        plot_errors(df=df, base_col=onderwerp, start=start, end=end, yaxis_title=yaxis_title)
         plot_distribution(df=df, base_col=onderwerp, start=start, end=end)
     else:
         raise ValueError("Kies een van de volgende opties: 'errors', 'distribution' of 'both'.")
@@ -476,6 +476,88 @@ def bereken_metrieken(list_of_dfs, onderwerp='Ziekteverzuim', start=None, end=No
         'calc_MAPE': 'Mean Absolute Percentage Error', 
         'calc_RMSE': 'Root Mean Squared Error'}, 
         inplace=True)
+    return df_metrics
+
+def opties_berekenen(data, 
+                     onderwerp='Ziekteverzuim',
+                     vanaf_datum_train_periode = None,
+                     tot_datum_train_periode = None,
+                     vanaf_datum_test_periode = None,
+                     tot_datum_test_periode = None,
+                     zie_traintest_periodes=False):
+
+    _data = data.copy()
+    
+    vanaf_datum_train_periode, tot_datum_train_periode, \
+        vanaf_datum_test_periode, tot_datum_test_periode = calibrate_dates(vanaf_datum_train_periode,
+                                                                           tot_datum_train_periode, 
+                                                                           vanaf_datum_test_periode, 
+                                                                           tot_datum_test_periode)
+
+
+    df_optie1 = pas_voortschrijdend_gemiddelde_toe(
+        data=_data,
+        onderwerp=onderwerp,
+        vensterlengte=1,
+        verschuiving=365,
+        zie_traintest_periodes=zie_traintest_periodes,
+        plot=False
+    )
+    df_optie1['Optie 1'] = df_optie1['Voortschrijdend gemiddelde']
+    
+    df_optie2 = pas_voortschrijdend_gemiddelde_toe(
+        data=_data,
+        onderwerp=onderwerp,
+        vensterlengte=7,
+        verschuiving=365,
+        zie_traintest_periodes=zie_traintest_periodes,
+        plot=False
+    )
+    df_optie2['Optie 2'] = df_optie2['Voortschrijdend gemiddelde']
+    
+    df_optie3 = pas_regressie_toe(
+        data=_data,
+        onderwerp=onderwerp,
+        jaarlijks_seizoenspatroon=True,
+        wekelijks_seizoenspatroon=False,
+        graad=1,
+        n_knots=3,
+        zie_traintest_periodes=zie_traintest_periodes,
+        plot=False
+    )
+    df_optie3['Optie 3'] = df_optie3['Regressie']
+    
+    df_optie4 = pas_regressie_toe(
+        data=_data,
+        onderwerp=onderwerp,
+        jaarlijks_seizoenspatroon=True,
+        wekelijks_seizoenspatroon=True,
+        graad=2,
+        n_knots=3,
+        zie_traintest_periodes=zie_traintest_periodes,
+        plot=False
+    )
+    df_optie4['Optie 4'] = df_optie4['Regressie']
+    
+    ## Visualiseren
+    df_all = pd.concat([df_optie1[['Ziekteverzuim','Optie 1']], df_optie2['Optie 2'], df_optie3['Optie 3'], df_optie4['Optie 4']], axis=1)
+
+    # df_plot = df_all.iloc[vanaf_datum_test_periode:zie_traintest_periodes]
+    df_plot = df_all.loc[(df_all.index >= vanaf_datum_test_periode) & (df_all.index <= tot_datum_test_periode)]
+
+    plot_prediction_with_shapes(df=df_plot)
+    # plot_prediction_with_shapes(df=df_all, 
+    #                             start_train=vanaf_datum_train_periode, 
+    #                             end_train=tot_datum_train_periode, 
+    #                             start_test=vanaf_datum_test_periode, 
+    #                             end_test=tot_datum_test_periode, 
+    #                             shapes=zie_traintest_periodes)
+
+    
+    # Berekenen metrieken
+    df_metrics = bereken_metrieken(list_of_dfs=[df_all], 
+                    onderwerp=onderwerp)
+
     return df_metrics
 
 def optie_1(data, onderwerp='Ziekteverzuim'):

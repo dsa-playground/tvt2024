@@ -30,7 +30,7 @@ def plot_timeseries(df, col, date_untill='2024-05-15'):
     fig.show()
 
 
-def plot_prediction_with_shapes(df, start_train=None, end_train=None, start_test=None, end_test=None, shapes=False, show_y_zero=False):
+def plot_prediction_with_shapes(df, start_train=None, end_train=None, start_test=None, end_test=None, shapes=False, show_y_zero=False, yaxis_title="Ziekteverzuimpercentage (%)"):
 
     color_dict = {'Cliënten':'#0084B2', 
                   'Ziekteverzuim': '#0084B2', # #0084B2 #646A69
@@ -42,6 +42,10 @@ def plot_prediction_with_shapes(df, start_train=None, end_train=None, start_test
                   'Gemiddelde error': '#F8AF5E', 
                   'Voortschrijdend gemiddelde error': '#a55233', # #a55233 #0084B2
                   'Regressie error': '#402a23',
+                  'Optie 1': '#F8AF5E',
+                  'Optie 2': '#5C605F',
+                  'Optie 3': '#BCAECE',
+                  'Optie 4': '#fe4a49',
                   }  # #F85EF4 #402a23 #AF5EF8
     ## Plot results
     fig = go.Figure()
@@ -83,7 +87,12 @@ def plot_prediction_with_shapes(df, start_train=None, end_train=None, start_test
     
     fig.update_layout(
             plot_bgcolor='white',
-            paper_bgcolor='white')
+            paper_bgcolor='white',
+            autosize=False,
+            width=1000,  # Set the width to the desired value
+            xaxis_title="Datum",
+            yaxis_title=yaxis_title,
+    )
 
     if shapes:
         if (start_train is not None) and (end_train is not None):
@@ -139,7 +148,7 @@ def make_error_df(df, base_col, with_base_col=False):
         error_cols = [col for col in _df.columns if ('error' in col) and (base_col not in col)]
         return _df[error_cols]
 
-def plot_errors(df, base_col, start, end, shapes=False, show_y_zero=True):
+def plot_errors(df, base_col, start, end, yaxis_title, shapes=False, show_y_zero=True):
 
     _df = df.loc[start:end].copy()
 
@@ -147,7 +156,7 @@ def plot_errors(df, base_col, start, end, shapes=False, show_y_zero=True):
 
     # error_cols = [col for col in _df.columns if ('error' in col) and (base_col not in col)]
 
-    plot_prediction_with_shapes(df_error, shapes=shapes, show_y_zero=show_y_zero)
+    plot_prediction_with_shapes(df_error, shapes=shapes, show_y_zero=show_y_zero, yaxis_title=yaxis_title)
 
 def plot_distribution(df, base_col, start, end):
     _df = df.loc[start:end].copy()

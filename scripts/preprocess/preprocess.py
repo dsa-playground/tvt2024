@@ -260,7 +260,7 @@ def calibrate_dates(start_train, end_train, start_test, end_test):
     date_today = datetime.datetime.now()
     year_in_the_past = date_today - datetime.timedelta(days=365)
     if start_train == None:
-        start_train = '2019-01-01'
+        start_train = '2021-01-01'
     if end_train == None:
         end_train = year_in_the_past.strftime('%Y-%m-%d')
     if start_test == None:
