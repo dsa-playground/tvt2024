@@ -328,6 +328,74 @@ def voorspel(
 
     return df
 
+def voorspel_met_voortschrijdend_gemiddelde(data,
+        onderwerp='Ziekteverzuim',
+        voorspellen_tot_datum='2025-01-01',
+        vensterlengte=7,
+        verschuiving=0,
+        jaarlijks_patroon=None,
+        wekelijks_patroon=None,
+        graad=None,
+        model=None,
+        zie_traintest_periodes=False):
+    
+    _data = data.copy()
+    vanaf_datum_train_periode = _data.index.min()
+    maximum_data_dataset = datetime.datetime(2024,12,31)
+    date_yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+    maximum_date = min(date_yesterday, maximum_data_dataset)
+    tot_datum_train_periode = maximum_date
+    vanaf_datum_test_periode = maximum_date
+    tot_datum_test_periode = voorspellen_tot_datum
+
+    df = pas_voortschrijdend_gemiddelde_toe(
+            data=_data,
+            onderwerp=onderwerp,
+            vensterlengte=vensterlengte,
+            verschuiving=verschuiving,
+            vanaf_datum_train_periode = vanaf_datum_train_periode,
+            tot_datum_train_periode = tot_datum_train_periode,
+            vanaf_datum_test_periode = vanaf_datum_test_periode,
+            tot_datum_test_periode = tot_datum_test_periode,
+            zie_traintest_periodes=zie_traintest_periodes
+        )
+    return df
+
+def voorspel_met_regressie(data,
+        onderwerp='Ziekteverzuim',
+        voorspellen_tot_datum='2025-01-01',
+        vensterlengte=None,
+        verschuiving=None,
+        jaarlijks_patroon=False,
+        wekelijks_patroon=False,
+        graad=1,
+        model=None,
+        zie_traintest_periodes=False):
+
+    _data = data.copy()
+    vanaf_datum_train_periode = _data.index.min()
+    maximum_data_dataset = datetime.datetime(2024,12,31)
+    date_yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+    maximum_date = min(date_yesterday, maximum_data_dataset)
+    tot_datum_train_periode = maximum_date
+    vanaf_datum_test_periode = maximum_date
+    tot_datum_test_periode = voorspellen_tot_datum
+
+    df = pas_regressie_toe(
+            data=_data,
+            onderwerp=onderwerp,
+            jaarlijks_seizoenspatroon=jaarlijks_patroon,
+            wekelijks_seizoenspatroon=wekelijks_patroon,
+            graad=graad,
+            vanaf_datum_train_periode = vanaf_datum_train_periode,
+            tot_datum_train_periode = tot_datum_train_periode,
+            vanaf_datum_test_periode = vanaf_datum_test_periode,
+            tot_datum_test_periode = tot_datum_test_periode,
+            zie_traintest_periodes=zie_traintest_periodes
+        )
+
+    return df                
+
 # def pas_modellen_toe(data, 
 #                      onderwerp, 
 #                      vanaf_datum_train_periode = None,
@@ -451,7 +519,7 @@ def bereken_metrieken(list_of_dfs, onderwerp='Ziekteverzuim', start=None, end=No
         _description_
     """
     df = combine_dfs_of_models(list_of_dfs)
-    df = combine_dfs_of_models(list_of_dfs)
+    df.dropna(inplace=True)
     _, _, start, end = calibrate_dates(None,None, start, end)
     if start is None:
         start = df.index.min()
