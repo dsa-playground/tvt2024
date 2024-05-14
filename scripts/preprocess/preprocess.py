@@ -206,7 +206,10 @@ def make_X_y(df, onderwerp, vanaf_datum_train_periode, tot_datum_train_periode, 
 
     # return vanaf_datum_train_periode, tot_datum_train_periode, \
     # vanaf_datum_test_periode, tot_datum_test_periode
-
+    # print(f"Vanaf datum train periode: {vanaf_datum_train_periode}")
+    # print(f"Tot datum train periode: {tot_datum_train_periode}")
+    # print(f"Vanaf datum test periode: {vanaf_datum_test_periode}")  
+    # print(f"Tot datum test periode: {tot_datum_test_periode}")
     if tot_datum_train_periode < vanaf_datum_train_periode:
         raise ValueError("Let op: tot_datum_train_periode moet groter zijn dan vanaf_datum_train_periode. Kies andere waarden aub.")
     if vanaf_datum_test_periode < tot_datum_train_periode:
